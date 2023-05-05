@@ -27,7 +27,7 @@
   </modules>
 
   <properties>
-    <com.io7m.idstore.version>0.0.14-SNAPSHOT</com.io7m.idstore.version>
+    <com.io7m.idstore.version>0.0.14</com.io7m.idstore.version>
     <com.io7m.anethum.version>0.0.2</com.io7m.anethum.version>
     <com.io7m.cedarbridge.version>0.0.12</com.io7m.cedarbridge.version>
     <com.io7m.cxbutton.version>0.0.5</com.io7m.cxbutton.version>
