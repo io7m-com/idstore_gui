@@ -27,11 +27,11 @@
   </modules>
 
   <properties>
-    <com.io7m.idstore.version>1.0.0</com.io7m.idstore.version>
     <com.io7m.anethum.version>0.0.2</com.io7m.anethum.version>
     <com.io7m.cedarbridge.version>0.0.12</com.io7m.cedarbridge.version>
     <com.io7m.cxbutton.version>0.0.5</com.io7m.cxbutton.version>
     <com.io7m.hibiscus.version>0.0.8</com.io7m.hibiscus.version>
+    <com.io7m.idstore.version>1.0.0</com.io7m.idstore.version>
     <com.io7m.jade.version>1.0.2</com.io7m.jade.version>
     <com.io7m.jbssio.version>2.0.0</com.io7m.jbssio.version>
     <com.io7m.jqpage.version>0.0.3</com.io7m.jqpage.version>
@@ -44,6 +44,7 @@
     <com.io7m.xoanon.version>0.0.3</com.io7m.xoanon.version>
     <com.io7m.xstructural.version>1.8.0</com.io7m.xstructural.version>
     <io7m.api.previousVersion>0.0.14-SNAPSHOT</io7m.api.previousVersion>
+    <io7m.java.targetJavaVersion>21</io7m.java.targetJavaVersion>
     <jetty.version>11.0.15</jetty.version>
     <jooq.version>3.18.3</jooq.version>
     <logback.version>1.4.14</logback.version>
