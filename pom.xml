@@ -8,7 +8,7 @@
   <parent>
     <groupId>com.io7m.primogenitor</groupId>
     <artifactId>com.io7m.primogenitor.full</artifactId>
-    <version>8.1.0</version>
+    <version>8.2.0</version>
   </parent>
 
   <groupId>com.io7m.idstore_gui</groupId>
@@ -31,7 +31,7 @@
     <com.io7m.cedarbridge.version>0.0.12</com.io7m.cedarbridge.version>
     <com.io7m.cxbutton.version>0.0.5</com.io7m.cxbutton.version>
     <com.io7m.hibiscus.version>0.0.8</com.io7m.hibiscus.version>
-    <com.io7m.idstore.version>1.0.0</com.io7m.idstore.version>
+    <com.io7m.idstore.version>1.1.0</com.io7m.idstore.version>
     <com.io7m.jade.version>1.0.2</com.io7m.jade.version>
     <com.io7m.jbssio.version>2.0.0</com.io7m.jbssio.version>
     <com.io7m.jqpage.version>0.0.3</com.io7m.jqpage.version>
@@ -304,7 +304,7 @@
       <dependency>
         <groupId>com.io7m.primogenitor</groupId>
         <artifactId>com.io7m.primogenitor.support</artifactId>
-        <version>8.1.0</version>
+        <version>8.2.0</version>
       </dependency>
 
       <dependency>
