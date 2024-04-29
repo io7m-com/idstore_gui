@@ -186,7 +186,7 @@ public final class IdAGAuditController implements Initializable
     tableMessageColumn.setReorderable(false);
     tableMessageColumn.setComparator(String::compareToIgnoreCase);
     tableMessageColumn.setCellValueFactory(
-      param -> new SimpleStringProperty(param.getValue().message()));
+      param -> new SimpleStringProperty(param.getValue().data().toString()));
 
     this.eventTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
     this.eventTable.getSelectionModel().setSelectionMode(SINGLE);
