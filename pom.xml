@@ -27,6 +27,11 @@
   </modules>
 
   <properties>
+    <!-- Configuration -->
+    <io7m.api.previousVersion>0.0.14-SNAPSHOT</io7m.api.previousVersion>
+    <io7m.java.targetJavaVersion>21</io7m.java.targetJavaVersion>
+
+    <!-- io7m dependencies -->
     <com.io7m.anethum.version>0.0.2</com.io7m.anethum.version>
     <com.io7m.cedarbridge.version>0.0.12</com.io7m.cedarbridge.version>
     <com.io7m.cxbutton.version>0.0.5</com.io7m.cxbutton.version>
@@ -43,8 +48,8 @@
     <com.io7m.verdant.version>1.0.0</com.io7m.verdant.version>
     <com.io7m.xoanon.version>0.0.3</com.io7m.xoanon.version>
     <com.io7m.xstructural.version>1.8.0</com.io7m.xstructural.version>
-    <io7m.api.previousVersion>0.0.14-SNAPSHOT</io7m.api.previousVersion>
-    <io7m.java.targetJavaVersion>21</io7m.java.targetJavaVersion>
+
+    <!-- Third-party dependencies. -->
     <jetty.version>11.0.15</jetty.version>
     <jooq.version>3.18.3</jooq.version>
     <logback.version>1.4.14</logback.version>
@@ -63,9 +68,9 @@
   </licenses>
 
   <scm>
-    <url>https://www.github.com/io7m/idstore_gui</url>
-    <connection>scm:git:https://github.com/io7m/idstore_gui</connection>
-    <developerConnection>scm:git:https://github.com/io7m/idstore_gui</developerConnection>
+    <url>https://www.github.com/io7m-com/idstore_gui</url>
+    <connection>scm:git:https://www.github.com/io7m-com/idstore_gui</connection>
+    <developerConnection>scm:git:https://www.github.com/io7m-com/idstore_gui</developerConnection>
   </scm>
 
   <developers>
@@ -78,7 +83,7 @@
   </developers>
 
   <issueManagement>
-    <url>https://www.github.com/io7m/idstore_gui/issues</url>
+    <url>https://www.github.com/io7m-com/idstore_gui/issues</url>
     <system>GitHub Issues</system>
   </issueManagement>
 
@@ -100,7 +105,7 @@
 
   <ciManagement>
     <system>GitHub Actions</system>
-    <url>https://github.com/idstore_gui/actions</url>
+    <url>https://www.github.com/io7m-com/idstore_gui/actions</url>
   </ciManagement>
 
   <prerequisites>
