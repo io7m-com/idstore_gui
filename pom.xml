@@ -56,7 +56,7 @@
     <opentelemetry.version>1.25.0</opentelemetry.version>
     <org.javafx.version>22.0.2</org.javafx.version>
     <org.jline.version>3.23.0</org.jline.version>
-    <slf4j.version>2.0.13</slf4j.version>
+    <slf4j.version>2.0.14</slf4j.version>
     <testcontainers.version>1.20.1</testcontainers.version>
   </properties>
 
