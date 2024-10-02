@@ -9,7 +9,10 @@ name: main.linux.temurin.lts
 
 on:
   push:
-    branches: [ develop, feature/*, release/* ]
+    branches: [ master, main, develop, feature/*, release/* ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -22,7 +25,7 @@ jobs:
       - name: JDK
         uses: actions/setup-java@v4
         with:
-          java-version: 21
+          java-version: 23
           distribution: 'temurin'
 
       - name: Collect project version
@@ -54,13 +57,13 @@ jobs:
           path: ./com.io7m.idstore_gui.tests/target/surefire-reports
 
       - name: Coverage
-        uses: codecov/codecov-action@v5.1.1
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: com.io7m.idstore_gui.tests/target/site/jacoco-aggregate/jacoco.xml
+          files: com.io7m.idstore_gui.tests/target/site/jacoco-aggregate/jacoco.xml
 
       - name: Log in to Quay.io.
-        uses: redhat-actions/podman-login@v1.7
+        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603
         with:
           username: ${{ secrets.QUAY_IO_USERNAME }}
           password: ${{ secrets.QUAY_IO_PASSWORD }}
