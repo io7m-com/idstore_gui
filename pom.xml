@@ -378,6 +378,7 @@
         <artifactId>com.io7m.xoanon.extension</artifactId>
         <version>${com.io7m.xoanon.version}</version>
       </dependency>
+      <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
         <version>${org.junit.version}</version>
