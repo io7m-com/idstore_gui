@@ -58,10 +58,14 @@ jobs:
 
       - name: Coverage
 <<<<<<< HEAD
+<<<<<<< HEAD
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
 =======
         uses: codecov/codecov-action@525fcbf8a05e5933b1ef3c7885da8fd1d7231920
 >>>>>>> 8fafd40 (Update workflows.)
+=======
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
+>>>>>>> 9bdb177 (Update workflows.)
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: com.io7m.idstore_gui.tests/target/site/jacoco-aggregate/jacoco.xml
