@@ -30,6 +30,7 @@ open module com.io7m.idstore_gui.admin
   requires javafx.fxml;
   requires javafx.graphics;
 
+  requires com.io7m.hibiscus.api;
   requires com.io7m.jade.api;
   requires com.io7m.jaffirm.core;
   requires com.io7m.jproperties.core;
@@ -39,6 +40,7 @@ open module com.io7m.idstore_gui.admin
   requires com.io7m.seltzer.api;
   requires com.io7m.taskrecorder.core;
   requires org.slf4j;
+  requires com.io7m.idstore.protocol.admin;
 
   exports com.io7m.idstore_gui.admin;
 
