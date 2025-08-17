@@ -18,12 +18,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           submodules: true
 
       - name: JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
         with:
           java-version: 23
           distribution: 'temurin'
@@ -43,29 +43,21 @@ jobs:
         run: ./.github/workflows/run-with-xvfb.sh mvn --batch-mode --strict-checksums --errors clean verify site
 
       - name: Upload video
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ always() }}
         with:
           name: test-video
           path: test-suite.webm
 
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: test-logs
           path: ./com.io7m.idstore_gui.tests/target/surefire-reports
 
       - name: Coverage
-<<<<<<< HEAD
-<<<<<<< HEAD
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
-=======
-        uses: codecov/codecov-action@525fcbf8a05e5933b1ef3c7885da8fd1d7231920
->>>>>>> 8fafd40 (Update workflows.)
-=======
-        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
->>>>>>> 9bdb177 (Update workflows.)
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: com.io7m.idstore_gui.tests/target/site/jacoco-aggregate/jacoco.xml
