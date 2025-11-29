@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>com.io7m.primogenitor</groupId>
-    <artifactId>com.io7m.primogenitor.full</artifactId>
+    <artifactId>com.io7m.primogenitor.lite</artifactId>
     <version>9.0.0</version>
   </parent>
 
@@ -306,7 +306,7 @@
       <dependency>
         <groupId>com.io7m.primogenitor</groupId>
         <artifactId>com.io7m.primogenitor.support</artifactId>
-        <version>9.0.0-beta0003</version>
+        <version>9.0.0</version>
       </dependency>
 
       <dependency>
@@ -443,15 +443,6 @@
         </plugin>
       </plugins>
     </pluginManagement>
-
-    <plugins>
-      <!-- Generate a site -->
-      <plugin>
-        <groupId>com.io7m.minisite</groupId>
-        <artifactId>com.io7m.minisite.maven_plugin</artifactId>
-        <inherited>false</inherited>
-      </plugin>
-    </plugins>
   </build>
 
 </project>
