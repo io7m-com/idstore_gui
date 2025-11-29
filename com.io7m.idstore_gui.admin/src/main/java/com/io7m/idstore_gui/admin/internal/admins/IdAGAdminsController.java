@@ -18,9 +18,6 @@ package com.io7m.idstore_gui.admin.internal.admins;
 
 import com.io7m.hibiscus.api.HBStateType;
 import com.io7m.hibiscus.api.HBStateType.HBStateDisconnected;
-import com.io7m.idstore_gui.admin.IdAGConfiguration;
-import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
-import com.io7m.idstore_gui.admin.internal.client.IdAGClientService;
 import com.io7m.idstore.model.IdAdmin;
 import com.io7m.idstore.model.IdAdminCreate;
 import com.io7m.idstore.model.IdAdminPermission;
@@ -32,6 +29,9 @@ import com.io7m.idstore.model.IdPage;
 import com.io7m.idstore.model.IdPassword;
 import com.io7m.idstore.model.IdRealName;
 import com.io7m.idstore.model.IdTimeRange;
+import com.io7m.idstore_gui.admin.IdAGConfiguration;
+import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
+import com.io7m.idstore_gui.admin.internal.client.IdAGClientService;
 import com.io7m.repetoir.core.RPServiceDirectoryType;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
@@ -124,7 +124,7 @@ public final class IdAGAdminsController implements Initializable
   }
 
   private void onClientStatusChanged(
-    final HBStateType<?, ?, ?, ?> statusNew)
+    final HBStateType statusNew)
   {
     if (statusNew instanceof HBStateDisconnected) {
       Platform.runLater(() -> {

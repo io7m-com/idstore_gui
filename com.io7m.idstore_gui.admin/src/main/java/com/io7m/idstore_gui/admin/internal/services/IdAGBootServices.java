@@ -84,7 +84,7 @@ public final class IdAGBootServices
       }
     });
 
-    thread.setName("com.io7m.idstore.boot[%d]".formatted(thread.getId()));
+    thread.setName("com.io7m.idstore.boot[%d]".formatted(thread.threadId()));
     thread.setDaemon(true);
     thread.start();
     return future;

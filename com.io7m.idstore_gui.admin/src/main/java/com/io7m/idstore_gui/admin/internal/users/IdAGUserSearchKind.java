@@ -17,8 +17,21 @@
 
 package com.io7m.idstore_gui.admin.internal.users;
 
+/**
+ * The user search kind.
+ */
+
 enum IdAGUserSearchKind
 {
+  /**
+   * Search by details.
+   */
+
   BY_DETAILS,
+
+  /**
+   * Search by email.
+   */
+
   BY_EMAIL
 }

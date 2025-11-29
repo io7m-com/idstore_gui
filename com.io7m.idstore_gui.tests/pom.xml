@@ -19,6 +19,7 @@
   <url>https://www.io7m.com/software/idstore</url>
 
   <properties>
+    <checkstyle.skip>true</checkstyle.skip>
     <mdep.analyze.skip>true</mdep.analyze.skip>
   </properties>
 

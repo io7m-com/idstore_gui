@@ -18,12 +18,12 @@ package com.io7m.idstore_gui.admin.internal.audit;
 
 import com.io7m.hibiscus.api.HBStateType;
 import com.io7m.hibiscus.api.HBStateType.HBStateDisconnected;
-import com.io7m.idstore_gui.admin.IdAGConfiguration;
-import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
-import com.io7m.idstore_gui.admin.internal.client.IdAGClientService;
 import com.io7m.idstore.model.IdAuditEvent;
 import com.io7m.idstore.model.IdPage;
 import com.io7m.idstore.model.IdTimeRange;
+import com.io7m.idstore_gui.admin.IdAGConfiguration;
+import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
+import com.io7m.idstore_gui.admin.internal.client.IdAGClientService;
 import com.io7m.repetoir.core.RPServiceDirectoryType;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
@@ -199,7 +199,7 @@ public final class IdAGAuditController implements Initializable
   }
 
   private void onClientStatusChanged(
-    final HBStateType<?, ?, ?, ?> statusNew)
+    final HBStateType statusNew)
   {
     if (statusNew instanceof HBStateDisconnected) {
       Platform.runLater(() -> {

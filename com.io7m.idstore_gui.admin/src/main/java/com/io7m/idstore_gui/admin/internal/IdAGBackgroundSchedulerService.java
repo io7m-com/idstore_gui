@@ -42,7 +42,7 @@ public final class IdAGBackgroundSchedulerService
       thread.setName(
         String.format(
           "com.io7m.idstore.admin_gui[%d]",
-          Long.valueOf(thread.getId()))
+          Long.valueOf(thread.threadId()))
       );
       return thread;
     });

@@ -17,10 +17,10 @@
 
 package com.io7m.idstore_gui.admin.internal.admins;
 
+import com.io7m.idstore.model.IdAdmin;
 import com.io7m.idstore_gui.admin.IdAGConfiguration;
 import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
 import com.io7m.idstore_gui.admin.internal.dialogs.IdAGDialogFactoryAbstract;
-import com.io7m.idstore.model.IdAdmin;
 import com.io7m.repetoir.core.RPServiceDirectoryType;
 import javafx.stage.Stage;
 

@@ -18,20 +18,14 @@ package com.io7m.idstore_gui.admin.internal.client;
 
 import com.io7m.hibiscus.api.HBStateType;
 import com.io7m.hibiscus.api.HBStateType.HBStateDisconnected;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingCommandFailed;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingCommandSucceeded;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingLoginFailed;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingLoginSucceeded;
-import com.io7m.idstore.admin_client.api.IdAClientAsynchronousType;
 import com.io7m.idstore.admin_client.api.IdAClientConfiguration;
-import com.io7m.idstore.admin_client.api.IdAClientCredentials;
+import com.io7m.idstore.admin_client.api.IdAClientConnectionParameters;
 import com.io7m.idstore.admin_client.api.IdAClientException;
 import com.io7m.idstore.admin_client.api.IdAClientFactoryType;
-import com.io7m.idstore_gui.admin.internal.IdAGPerpetualSubscriber;
-import com.io7m.idstore_gui.admin.internal.events.IdAGEventBus;
-import com.io7m.idstore_gui.admin.internal.events.IdAGEventStatusCompleted;
-import com.io7m.idstore_gui.admin.internal.events.IdAGEventStatusFailed;
-import com.io7m.idstore_gui.admin.internal.events.IdAGEventType;
+import com.io7m.idstore.admin_client.api.IdAClientType;
+import com.io7m.idstore.error_codes.IdErrorCode;
+import com.io7m.idstore.error_codes.IdException;
+import com.io7m.idstore.error_codes.IdStandardErrorCodes;
 import com.io7m.idstore.model.IdAdmin;
 import com.io7m.idstore.model.IdAdminColumn;
 import com.io7m.idstore.model.IdAdminColumnOrdering;
@@ -67,6 +61,7 @@ import com.io7m.idstore.protocol.admin.IdACommandAdminSearchByEmailPrevious;
 import com.io7m.idstore.protocol.admin.IdACommandAdminSearchNext;
 import com.io7m.idstore.protocol.admin.IdACommandAdminSearchPrevious;
 import com.io7m.idstore.protocol.admin.IdACommandAdminSelf;
+import com.io7m.idstore.protocol.admin.IdACommandAdminUpdateCredentials;
 import com.io7m.idstore.protocol.admin.IdACommandAuditSearchBegin;
 import com.io7m.idstore.protocol.admin.IdACommandAuditSearchNext;
 import com.io7m.idstore.protocol.admin.IdACommandAuditSearchPrevious;
@@ -87,8 +82,8 @@ import com.io7m.idstore.protocol.admin.IdACommandUserSearchByEmailNext;
 import com.io7m.idstore.protocol.admin.IdACommandUserSearchByEmailPrevious;
 import com.io7m.idstore.protocol.admin.IdACommandUserSearchNext;
 import com.io7m.idstore.protocol.admin.IdACommandUserSearchPrevious;
+import com.io7m.idstore.protocol.admin.IdACommandUserUpdateCredentials;
 import com.io7m.idstore.protocol.admin.IdAResponseAdminCreate;
-import com.io7m.idstore.protocol.admin.IdAResponseAdminDelete;
 import com.io7m.idstore.protocol.admin.IdAResponseAdminGet;
 import com.io7m.idstore.protocol.admin.IdAResponseAdminSearchBegin;
 import com.io7m.idstore.protocol.admin.IdAResponseAdminSearchByEmailBegin;
@@ -105,7 +100,6 @@ import com.io7m.idstore.protocol.admin.IdAResponseError;
 import com.io7m.idstore.protocol.admin.IdAResponseLogin;
 import com.io7m.idstore.protocol.admin.IdAResponseType;
 import com.io7m.idstore.protocol.admin.IdAResponseUserBanCreate;
-import com.io7m.idstore.protocol.admin.IdAResponseUserBanDelete;
 import com.io7m.idstore.protocol.admin.IdAResponseUserBanGet;
 import com.io7m.idstore.protocol.admin.IdAResponseUserCreate;
 import com.io7m.idstore.protocol.admin.IdAResponseUserGet;
@@ -117,7 +111,14 @@ import com.io7m.idstore.protocol.admin.IdAResponseUserSearchByEmailPrevious;
 import com.io7m.idstore.protocol.admin.IdAResponseUserSearchNext;
 import com.io7m.idstore.protocol.admin.IdAResponseUserSearchPrevious;
 import com.io7m.idstore.protocol.admin.IdAResponseUserUpdate;
+import com.io7m.idstore_gui.admin.internal.IdAGPerpetualSubscriber;
+import com.io7m.idstore_gui.admin.internal.events.IdAGEventBus;
+import com.io7m.idstore_gui.admin.internal.events.IdAGEventStatusCompleted;
+import com.io7m.idstore_gui.admin.internal.events.IdAGEventStatusFailed;
+import com.io7m.idstore_gui.admin.internal.events.IdAGEventStatusInProgress;
+import com.io7m.idstore_gui.admin.internal.events.IdAGEventType;
 import com.io7m.repetoir.core.RPServiceType;
+import com.io7m.seltzer.api.SStructuredErrorType;
 import com.io7m.taskrecorder.core.TRTaskRecorder;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -125,13 +126,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.io7m.idstore.model.IdUserColumn.BY_IDNAME;
 
@@ -151,29 +157,33 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     new IdAdminColumnOrdering(IdAdminColumn.BY_IDNAME, true);
 
   private final IdAGEventBus eventBus;
-  private final SimpleObjectProperty<
-    HBStateType<
-      IdACommandType<?>,
-      IdAResponseType,
-      IdAResponseError,
-      IdAClientCredentials>> status;
-  private final IdAClientAsynchronousType client;
+  private final SimpleObjectProperty<HBStateType> status;
+  private final IdAClientType client;
+  private final ExecutorService executor;
+  private final Duration loginTimeout;
   private URI serverLatest;
   private IdAdmin self;
+  private final Duration commandTimeout;
 
   private IdAGClientService(
     final IdAGEventBus inEventBus,
-    final IdAClientAsynchronousType inClient)
+    final IdAClientType inClient)
   {
     this.eventBus =
       Objects.requireNonNull(inEventBus, "eventBus");
     this.client =
       Objects.requireNonNull(inClient, "client");
 
+    this.loginTimeout =
+      Duration.ofSeconds(30L);
+    this.commandTimeout =
+      Duration.ofSeconds(30L);
     this.serverLatest =
       URI.create("urn:unspecified");
     this.status =
-      new SimpleObjectProperty<>(new HBStateDisconnected<>());
+      new SimpleObjectProperty<>(new HBStateDisconnected());
+    this.executor =
+      Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
   }
 
   /**
@@ -196,7 +206,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     throws IdAClientException, InterruptedException
   {
     final var client =
-      clients.openAsynchronousClient(new IdAClientConfiguration(locale));
+      clients.create(new IdAClientConfiguration(Clock.systemUTC(), locale));
     final var service =
       new IdAGClientService(eventBus, client);
 
@@ -205,106 +215,117 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
         service.status.set(s);
         transformState(s).ifPresent(eventBus::submit);
       }));
-
     return service;
   }
 
   private static Optional<IdAGEventType> transformState(
-    final HBStateType<IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> e)
+    final HBStateType e)
   {
-    if (e instanceof final HBStateExecutingCommandFailed<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> cmd) {
-      return transformStateCommandFailed(cmd);
-    }
-    if (e instanceof final HBStateExecutingLoginFailed<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> login) {
-      return transformStateLoginFailed(login);
-    }
-    if (e instanceof final HBStateExecutingCommandSucceeded<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> cmd) {
-      return transformStateCommandSucceeded(cmd);
-    }
-    if (e instanceof final HBStateExecutingLoginSucceeded<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> login) {
-      return transformStateLoginSucceeded(login);
-    }
-    return Optional.empty();
+    return switch (e) {
+      case final HBStateType.HBStateClosed st -> {
+        yield Optional.of(
+          new IdAGClientEvent(
+            "Closed.",
+            new IdAGEventStatusCompleted()
+          )
+        );
+      }
+      case final HBStateType.HBStateClosing st -> {
+        yield Optional.of(
+          new IdAGClientEvent(
+            "Closing...",
+            new IdAGEventStatusInProgress(OptionalDouble.empty())
+          )
+        );
+      }
+      case final HBStateType.HBStateConnected st -> {
+        yield Optional.of(
+          new IdAGClientEvent(
+            "Connected.",
+            new IdAGEventStatusCompleted()
+          )
+        );
+      }
+      case final HBStateType.HBStateConnecting st -> {
+        yield Optional.of(
+          new IdAGClientEvent(
+            "Connecting...",
+            new IdAGEventStatusInProgress(OptionalDouble.empty())
+          )
+        );
+      }
+      case final HBStateType.HBStateConnectionFailed st -> {
+        yield transformStateConnectionFailed(st);
+      }
+      case final HBStateType.HBStateConnectionSucceeded st -> {
+        yield Optional.of(
+          new IdAGClientEvent(
+            "Connected.",
+            new IdAGEventStatusCompleted()
+          )
+        );
+      }
+      case final HBStateDisconnected st -> {
+        yield Optional.of(
+          new IdAGClientEvent(
+            "Disconnected.",
+            new IdAGEventStatusCompleted()
+          )
+        );
+      }
+    };
   }
 
-  private static Optional<IdAGEventType> transformStateLoginSucceeded(
-    final HBStateExecutingLoginSucceeded<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> login)
-  {
-    return Optional.of(
-      new IdAGClientEvent(
-        "Logged in successfully.",
-        new IdAGEventStatusCompleted()
-      )
-    );
-  }
-
-  private static Optional<IdAGEventType> transformStateCommandSucceeded(
-    final HBStateExecutingCommandSucceeded<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> cmd)
-  {
-    return Optional.of(
-      new IdAGClientEvent(
-        "Executed %s successfully.".formatted(cmd.command().getClass().getSimpleName()),
-        new IdAGEventStatusCompleted()
-      )
-    );
-  }
-
-  private static Optional<IdAGEventType> transformStateLoginFailed(
-    final HBStateExecutingLoginFailed<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> login)
+  private static Optional<IdAGEventType> transformStateConnectionFailed(
+    final HBStateType.HBStateConnectionFailed st)
   {
     final var recorder =
-      TRTaskRecorder.create(LOG, "Logging in...");
+      TRTaskRecorder.create(LOG, "Connecting to server.");
 
-    final var error = login.response();
-    recorder.setStepFailed(error.message());
-    recorder.setTaskFailed(error.message());
+    final var responseOpt =
+      st.response();
+
+    String message = "An unrecognized error occurred.";
+    Map<String, String> attributes = Map.of();
+    Optional<String> remediating = Optional.empty();
+    Optional<Throwable> exception = Optional.empty();
+
+    if (responseOpt.isPresent()) {
+      final var response = responseOpt.get();
+      if (response instanceof final IdAResponseError error) {
+        message = error.message();
+        attributes = error.attributes();
+        remediating = error.remediatingAction();
+        exception = error.exception();
+      }
+    } else {
+      final Optional<Exception> exOpt = st.exception();
+      if (exOpt.isPresent()) {
+        final var exceptionR = exOpt.get();
+        if (exceptionR instanceof final SStructuredErrorType<?> exs) {
+          attributes = exs.attributes();
+          remediating = exs.remediatingAction();
+        }
+        message =
+          Optional.ofNullable(exceptionR.getMessage())
+          .orElse(exceptionR.getClass().getSimpleName());
+      }
+    }
+
+    recorder.setStepFailed(message);
+    recorder.setTaskFailed(message);
     final var task = recorder.toTask();
 
     return Optional.of(
       new IdAGClientEvent(
-        error.message(),
+        "Connection failed.",
         new IdAGEventStatusFailed(
           task,
-          error.errorCode(),
-          error.message(),
-          error.attributes(),
-          error.remediatingAction(),
-          error.exception()
-        )
-      )
-    );
-  }
-
-  private static Optional<IdAGEventType>
-  transformStateCommandFailed(
-    final HBStateExecutingCommandFailed<
-      IdACommandType<?>, IdAResponseType, IdAResponseError, IdAClientCredentials> cmd)
-  {
-    final var recorder =
-      TRTaskRecorder.create(LOG, "Executing " + cmd.command());
-
-    final var error = cmd.response();
-    recorder.setStepFailed(error.message());
-    recorder.setTaskFailed(error.message());
-    final var task = recorder.toTask();
-
-    return Optional.of(
-      new IdAGClientEvent(
-        error.message(),
-        new IdAGEventStatusFailed(
-          task,
-          error.errorCode(),
-          error.message(),
-          error.attributes(),
-          error.remediatingAction(),
-          error.exception()
+          IdStandardErrorCodes.IO_ERROR,
+          message,
+          attributes,
+          remediating,
+          exception
         )
       )
     );
@@ -330,11 +351,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
    * @return The current client status
    */
 
-  public ReadOnlyObjectProperty<HBStateType<
-    IdACommandType<?>,
-    IdAResponseType,
-    IdAResponseError,
-    IdAClientCredentials>> status()
+  public ReadOnlyObjectProperty<HBStateType> status()
   {
     return this.status;
   }
@@ -359,6 +376,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     throws Exception
   {
     this.client.close();
+    this.executor.close();
   }
 
   /**
@@ -384,17 +402,116 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
       uriOf(https, host, port);
 
     final var credentials =
-      new IdAClientCredentials(username, password, this.serverLatest, Map.of());
+      new IdAClientConnectionParameters(
+        username,
+        password,
+        this.serverLatest,
+        Map.of(),
+        this.loginTimeout,
+        this.commandTimeout
+      );
 
-    return this.client.loginAsyncOrElseThrow(
-        credentials,
-        IdAClientException::ofError)
+    return this.execute(() -> this.client.connectOrThrow(credentials))
       .thenApply(IdAResponseLogin.class::cast)
-      .thenCompose(x -> this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSelf(),
-        IdAClientException::ofError))
+      .thenCompose(x -> this.send(new IdACommandAdminSelf()))
       .thenApply(IdAResponseAdminSelf.class::cast)
       .thenApply(IdAResponseAdminSelf::admin);
+  }
+
+  interface OpType<T>
+  {
+    T execute()
+      throws Exception;
+  }
+
+  private <T> CompletableFuture<T> execute(
+    final OpType<T> op)
+  {
+    final var future = new CompletableFuture<T>();
+    this.executor.execute(() -> {
+      try {
+        future.complete(op.execute());
+      } catch (final Throwable e) {
+        future.completeExceptionally(e);
+      }
+    });
+    return future;
+  }
+
+  private <T extends IdAResponseType> CompletableFuture<T> send(
+    final IdACommandType<T> command)
+  {
+    final var future = new CompletableFuture<T>();
+    this.executor.execute(() -> {
+      try {
+        future.complete(
+          this.client.sendAndWaitOrThrow(
+            command,
+            this.commandTimeout
+          )
+        );
+        this.eventBus.submit(
+          new IdAGClientEvent(
+            "Executed %s".formatted(command.getClass().getSimpleName()),
+            new IdAGEventStatusCompleted()
+          )
+        );
+      } catch (final Throwable e) {
+        future.completeExceptionally(
+          this.handleCommandException(command, e)
+        );
+      }
+    });
+    return future;
+  }
+
+  private Throwable handleCommandException(
+    final IdACommandType<?> command,
+    final Throwable exception)
+  {
+    final var recorder =
+      TRTaskRecorder.create(
+        LOG,
+        "Executing %s".formatted(command.getClass().getSimpleName())
+      );
+
+    final String message;
+    if (exception.getMessage() != null) {
+      message = exception.getMessage();
+    } else {
+      message = exception.getClass().getSimpleName();
+    }
+    recorder.setStepFailed(message);
+    recorder.setTaskFailed(message);
+    final var task = recorder.toTask();
+
+    final IdErrorCode errorCode;
+    final Map<String, String> attributes;
+    final Optional<String> remediating;
+    if (exception instanceof final IdException ex) {
+      errorCode = ex.errorCode();
+      attributes = ex.attributes();
+      remediating = ex.remediatingAction();
+    } else {
+      errorCode = IdStandardErrorCodes.IO_ERROR;
+      attributes = Map.of();
+      remediating = Optional.empty();
+    }
+
+    this.eventBus.submit(
+      new IdAGClientEvent(
+        message,
+        new IdAGEventStatusFailed(
+          task,
+          errorCode,
+          message,
+          attributes,
+          remediating,
+          Optional.ofNullable(exception)
+        )
+      )
+    );
+    return exception;
   }
 
   /**
@@ -403,7 +520,10 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public void disconnect()
   {
-    this.client.disconnectAsync();
+    this.execute(() -> {
+      this.client.disconnect();
+      return null;
+    });
   }
 
   /**
@@ -431,10 +551,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
           100
         ));
 
-    return this.client.executeAsyncOrElseThrow(
-        command,
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserSearchBegin.class::cast)
+    return this.send(command)
       .thenApply(IdAResponseUserSearchBegin::page);
   }
 
@@ -446,10 +563,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdUserSummary>> userSearchNext()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserSearchNext(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserSearchNext.class::cast)
+    return this.send(new IdACommandUserSearchNext())
       .thenApply(IdAResponseUserSearchNext::page);
   }
 
@@ -461,10 +575,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdUserSummary>> userSearchPrevious()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserSearchPrevious(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserSearchPrevious.class::cast)
+    return this.send(new IdACommandUserSearchPrevious())
       .thenApply(IdAResponseUserSearchPrevious::page);
   }
 
@@ -479,10 +590,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Optional<IdUser>> userGet(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserGet(id),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserGet.class::cast)
+    return this.send(new IdACommandUserGet(id))
       .thenApply(IdAResponseUserGet::user);
   }
 
@@ -503,10 +611,8 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final Optional<IdRealName> realName,
     final Optional<IdPassword> password)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserUpdate(id, idName, realName, password),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserUpdate.class::cast)
+    return this.send(
+        new IdACommandUserUpdateCredentials(id, idName, realName, password))
       .thenApply(IdAResponseUserUpdate::user);
   }
 
@@ -521,10 +627,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Optional<IdUser>> userGetForEmail(
     final IdEmail email)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserGetByEmail(email),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserGet.class::cast)
+    return this.send(new IdACommandUserGetByEmail(email))
       .thenApply(IdAResponseUserGet::user);
   }
 
@@ -545,16 +648,14 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final Optional<String> type,
     final Optional<String> message)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAuditSearchBegin(new IdAuditSearchParameters(
+
+    return this.send(new IdACommandAuditSearchBegin(
+        new IdAuditSearchParameters(
           timeRange,
           owner,
           type,
-          message,
           100
-        )),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAuditSearchBegin.class::cast)
+        )))
       .thenApply(IdAResponseAuditSearchBegin::page);
   }
 
@@ -566,10 +667,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdAuditEvent>> auditSearchPrevious()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAuditSearchPrevious(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAuditSearchPrevious.class::cast)
+    return this.send(new IdACommandAuditSearchPrevious())
       .thenApply(IdAResponseAuditSearchPrevious::page);
   }
 
@@ -581,10 +679,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdAuditEvent>> auditSearchNext()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAuditSearchNext(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAuditSearchNext.class::cast)
+    return this.send(new IdACommandAuditSearchNext())
       .thenApply(IdAResponseAuditSearchNext::page);
   }
 
@@ -603,18 +698,16 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final IdTimeRange timeUpdatedRange,
     final String search)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserSearchByEmailBegin(
-          new IdUserSearchByEmailParameters(
-            timeCreatedRange,
-            timeUpdatedRange,
-            search,
-            DEFAULT_USER_ORDERING,
-            100
-          )
-        ),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserSearchByEmailBegin.class::cast)
+    final var command = new IdACommandUserSearchByEmailBegin(
+      new IdUserSearchByEmailParameters(
+        timeCreatedRange,
+        timeUpdatedRange,
+        search,
+        DEFAULT_USER_ORDERING,
+        100
+      )
+    );
+    return this.send(command)
       .thenApply(IdAResponseUserSearchByEmailBegin::page);
   }
 
@@ -626,10 +719,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdUserSummary>> userSearchByEmailNext()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserSearchByEmailNext(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserSearchByEmailNext.class::cast)
+    return this.send(new IdACommandUserSearchByEmailNext())
       .thenApply(IdAResponseUserSearchByEmailNext::page);
   }
 
@@ -641,10 +731,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdUserSummary>> userSearchByEmailPrevious()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserSearchByEmailPrevious(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserSearchByEmailPrevious.class::cast)
+    return this.send(new IdACommandUserSearchByEmailPrevious())
       .thenApply(IdAResponseUserSearchByEmailPrevious::page);
   }
 
@@ -659,9 +746,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Void> userDelete(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserDelete(id),
-        IdAClientException::ofError)
+    return this.send(new IdACommandUserDelete(id))
       .thenRun(() -> {
       });
   }
@@ -689,10 +774,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdAdmin> adminSelf()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSelf(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSelf.class::cast)
+    return this.send(new IdACommandAdminSelf())
       .thenApply(IdAResponseAdminSelf::admin)
       .thenApply(a -> {
         this.self = a;
@@ -713,10 +795,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final UUID id,
     final IdEmail email)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminEmailAdd(id, email),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminUpdate.class::cast)
+    return this.send(new IdACommandAdminEmailAdd(id, email))
       .thenApply(IdAResponseAdminUpdate::admin);
   }
 
@@ -733,10 +812,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final UUID id,
     final IdEmail email)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminEmailRemove(id, email),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminUpdate.class::cast)
+    return this.send(new IdACommandAdminEmailRemove(id, email))
       .thenApply(IdAResponseAdminUpdate::admin);
   }
 
@@ -753,10 +829,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final UUID id,
     final IdEmail email)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserEmailAdd(id, email),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserUpdate.class::cast)
+    return this.send(new IdACommandUserEmailAdd(id, email))
       .thenApply(IdAResponseUserUpdate::user);
   }
 
@@ -773,10 +846,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final UUID id,
     final IdEmail email)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserEmailRemove(id, email),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserUpdate.class::cast)
+    return this.send(new IdACommandUserEmailRemove(id, email))
       .thenApply(IdAResponseUserUpdate::user);
   }
 
@@ -791,10 +861,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Optional<IdBan>> userBanGet(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserBanGet(id),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserBanGet.class::cast)
+    return this.send(new IdACommandUserBanGet(id))
       .thenApply(IdAResponseUserBanGet::ban);
   }
 
@@ -809,10 +876,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<IdBan> userBanCreate(
     final IdBan ban)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserBanCreate(ban),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserBanCreate.class::cast)
+    return this.send(new IdACommandUserBanCreate(ban))
       .thenApply(IdAResponseUserBanCreate::ban);
   }
 
@@ -827,10 +891,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Optional<IdBan>> userBanDelete(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserBanDelete(id),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserBanDelete.class::cast)
+    return this.send(new IdACommandUserBanDelete(id))
       .thenApply(x -> Optional.empty());
   }
 
@@ -845,10 +906,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<List<IdLogin>> userLoginHistory(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserLoginHistory(id),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserLoginHistory.class::cast)
+    return this.send(new IdACommandUserLoginHistory(id))
       .thenApply(IdAResponseUserLoginHistory::history);
   }
 
@@ -863,15 +921,16 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<IdUser> userCreate(
     final IdUserCreate create)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandUserCreate(
-          create.id(),
-          create.idName(),
-          create.realName(),
-          create.email(),
-          create.password()),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseUserCreate.class::cast)
+    final var command =
+      new IdACommandUserCreate(
+        create.id(),
+        create.idName(),
+        create.realName(),
+        create.email(),
+        create.password()
+      );
+
+    return this.send(command)
       .thenApply(IdAResponseUserCreate::user);
   }
 
@@ -886,16 +945,17 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<IdAdmin> adminCreate(
     final IdAdminCreate create)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminCreate(
-          create.id(),
-          create.idName(),
-          create.realName(),
-          create.email(),
-          create.password(),
-          create.permissions().impliedPermissions()),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminCreate.class::cast)
+    final var command = new IdACommandAdminCreate(
+      create.id(),
+      create.idName(),
+      create.realName(),
+      create.email(),
+      create.password(),
+      create.permissions()
+        .impliedPermissions()
+    );
+
+    return this.send(command)
       .thenApply(IdAResponseAdminCreate::admin);
   }
 
@@ -910,10 +970,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Optional<IdAdmin>> adminGet(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminGet(id),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminGet.class::cast)
+    return this.send(new IdACommandAdminGet(id))
       .thenApply(IdAResponseAdminGet::admin);
   }
 
@@ -932,17 +989,17 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final IdTimeRange timeUpdatedRange,
     final String search)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSearchByEmailBegin(
-          new IdAdminSearchByEmailParameters(
-            timeCreatedRange,
-            timeUpdatedRange,
-            search,
-            DEFAULT_ADMIN_ORDERING,
-            100
-          )),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSearchByEmailBegin.class::cast)
+    final var command =
+      new IdACommandAdminSearchByEmailBegin(
+        new IdAdminSearchByEmailParameters(
+          timeCreatedRange,
+          timeUpdatedRange,
+          search,
+          DEFAULT_ADMIN_ORDERING,
+          100
+        ));
+
+    return this.send(command)
       .thenApply(IdAResponseAdminSearchByEmailBegin::page);
   }
 
@@ -954,10 +1011,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdAdminSummary>> adminSearchByEmailNext()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSearchByEmailNext(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSearchByEmailNext.class::cast)
+    return this.send(new IdACommandAdminSearchByEmailNext())
       .thenApply(IdAResponseAdminSearchByEmailNext::page);
   }
 
@@ -969,10 +1023,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdAdminSummary>> adminSearchByEmailPrevious()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSearchByEmailPrevious(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSearchByEmailPrevious.class::cast)
+    return this.send(new IdACommandAdminSearchByEmailPrevious())
       .thenApply(IdAResponseAdminSearchByEmailPrevious::page);
   }
 
@@ -991,17 +1042,16 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final IdTimeRange timeUpdatedRange,
     final Optional<String> search)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSearchBegin(
-          new IdAdminSearchParameters(
-            timeCreatedRange,
-            timeUpdatedRange,
-            search,
-            DEFAULT_ADMIN_ORDERING,
-            100
-          )),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSearchBegin.class::cast)
+    final var command = new IdACommandAdminSearchBegin(
+      new IdAdminSearchParameters(
+        timeCreatedRange,
+        timeUpdatedRange,
+        search,
+        DEFAULT_ADMIN_ORDERING,
+        100
+      ));
+
+    return this.send(command)
       .thenApply(IdAResponseAdminSearchBegin::page);
   }
 
@@ -1013,10 +1063,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdAdminSummary>> adminSearchNext()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSearchNext(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSearchNext.class::cast)
+    return this.send(new IdACommandAdminSearchNext())
       .thenApply(IdAResponseAdminSearchNext::page);
   }
 
@@ -1028,10 +1075,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
 
   public CompletableFuture<IdPage<IdAdminSummary>> adminSearchPrevious()
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminSearchPrevious(),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminSearchPrevious.class::cast)
+    return this.send(new IdACommandAdminSearchPrevious())
       .thenApply(IdAResponseAdminSearchPrevious::page);
   }
 
@@ -1052,10 +1096,8 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
     final Optional<IdRealName> realName,
     final Optional<IdPassword> password)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminUpdate(id, idName, realName, password),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminUpdate.class::cast)
+    return this.send(
+        new IdACommandAdminUpdateCredentials(id, idName, realName, password))
       .thenApply(IdAResponseAdminUpdate::admin);
   }
 
@@ -1070,10 +1112,7 @@ public final class IdAGClientService implements RPServiceType, AutoCloseable
   public CompletableFuture<Void> adminDelete(
     final UUID id)
   {
-    return this.client.executeAsyncOrElseThrow(
-        new IdACommandAdminDelete(id),
-        IdAClientException::ofError)
-      .thenApply(IdAResponseAdminDelete.class::cast)
+    return this.send(new IdACommandAdminDelete(id))
       .thenRun(() -> {
       });
   }

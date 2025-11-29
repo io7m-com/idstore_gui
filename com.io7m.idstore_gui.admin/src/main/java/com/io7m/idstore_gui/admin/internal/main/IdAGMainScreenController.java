@@ -18,9 +18,9 @@ package com.io7m.idstore_gui.admin.internal.main;
 
 import com.io7m.hibiscus.api.HBStateType;
 import com.io7m.hibiscus.api.HBStateType.HBStateClosed;
+import com.io7m.hibiscus.api.HBStateType.HBStateConnecting;
+import com.io7m.hibiscus.api.HBStateType.HBStateConnectionFailed;
 import com.io7m.hibiscus.api.HBStateType.HBStateDisconnected;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingLogin;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingLoginFailed;
 import com.io7m.idstore_gui.admin.IdAGConfiguration;
 import com.io7m.idstore_gui.admin.internal.IdAGApplication;
 import com.io7m.idstore_gui.admin.internal.IdAGCSS;
@@ -211,9 +211,9 @@ public final class IdAGMainScreenController implements Initializable
   }
 
   private void configureMainContentViewForClientStatus(
-    final HBStateType<?, ?, ?, ?> status)
+    final HBStateType status)
   {
-    if (status instanceof HBStateExecutingLogin) {
+    if (status instanceof HBStateConnecting) {
       Platform.runLater(() -> {
         this.contentHide();
         this.mainConnectMenuItem.setDisable(true);
@@ -224,7 +224,7 @@ public final class IdAGMainScreenController implements Initializable
     }
 
     if (status instanceof HBStateClosed
-        || status instanceof HBStateExecutingLoginFailed
+        || status instanceof HBStateConnectionFailed
         || status instanceof HBStateDisconnected) {
       Platform.runLater(() -> {
         this.contentHide();
@@ -349,7 +349,7 @@ public final class IdAGMainScreenController implements Initializable
       this.client.status()
         .get();
 
-    if (state instanceof HBStateExecutingLoginFailed
+    if (state instanceof HBStateConnectionFailed
         || state instanceof HBStateDisconnected) {
       new IdAGLoginControllers(this.services, this.configuration, this.strings)
         .openDialogAndWait(null);

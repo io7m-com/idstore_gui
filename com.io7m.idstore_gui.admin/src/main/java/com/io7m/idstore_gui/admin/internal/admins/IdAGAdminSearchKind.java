@@ -17,8 +17,21 @@
 
 package com.io7m.idstore_gui.admin.internal.admins;
 
+/**
+ * The admin search kind.
+ */
+
 enum IdAGAdminSearchKind
 {
+  /**
+   * Search by details.
+   */
+
   BY_DETAILS,
+
+  /**
+   * Search by email.
+   */
+
   BY_EMAIL
 }

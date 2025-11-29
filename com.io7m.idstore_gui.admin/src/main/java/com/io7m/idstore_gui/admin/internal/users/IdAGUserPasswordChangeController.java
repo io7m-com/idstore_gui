@@ -17,12 +17,12 @@
 
 package com.io7m.idstore_gui.admin.internal.users;
 
-import com.io7m.idstore_gui.admin.IdAGConfiguration;
-import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
-import com.io7m.idstore_gui.admin.internal.main.IdAGScreenControllerType;
 import com.io7m.idstore.model.IdPassword;
 import com.io7m.idstore.model.IdPasswordAlgorithmPBKDF2HmacSHA256;
 import com.io7m.idstore.model.IdPasswordException;
+import com.io7m.idstore_gui.admin.IdAGConfiguration;
+import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
+import com.io7m.idstore_gui.admin.internal.main.IdAGScreenControllerType;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;

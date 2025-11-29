@@ -16,8 +16,8 @@
 
 package com.io7m.idstore_gui.admin.internal.login;
 
-import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
 import com.io7m.idstore.model.IdLogin;
+import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.ListCell;
 import javafx.scene.layout.Pane;

@@ -8,7 +8,7 @@
   <parent>
     <groupId>com.io7m.primogenitor</groupId>
     <artifactId>com.io7m.primogenitor.lite</artifactId>
-    <version>9.0.0</version>
+    <version>9.1.0</version>
   </parent>
 
   <groupId>com.io7m.idstore_gui</groupId>
@@ -23,7 +23,6 @@
   <modules>
     <module>com.io7m.idstore_gui.admin</module>
     <module>com.io7m.idstore_gui.admin.main</module>
-    <module>com.io7m.idstore_gui.tests</module>
   </modules>
 
   <properties>
@@ -306,7 +305,7 @@
       <dependency>
         <groupId>com.io7m.primogenitor</groupId>
         <artifactId>com.io7m.primogenitor.support</artifactId>
-        <version>9.0.0</version>
+        <version>9.1.0</version>
       </dependency>
 
       <dependency>

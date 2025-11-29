@@ -17,11 +17,11 @@
 
 package com.io7m.idstore_gui.admin.internal.admins;
 
+import com.io7m.idstore.model.IdEmail;
+import com.io7m.idstore.model.IdValidityException;
 import com.io7m.idstore_gui.admin.IdAGConfiguration;
 import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
 import com.io7m.idstore_gui.admin.internal.main.IdAGScreenControllerType;
-import com.io7m.idstore.model.IdEmail;
-import com.io7m.idstore.model.IdValidityException;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;

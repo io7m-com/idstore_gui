@@ -18,15 +18,15 @@
 package com.io7m.idstore_gui.admin.internal.profile;
 
 import com.io7m.hibiscus.api.HBStateType;
+import com.io7m.hibiscus.api.HBStateType.HBStateConnectionSucceeded;
 import com.io7m.hibiscus.api.HBStateType.HBStateDisconnected;
-import com.io7m.hibiscus.api.HBStateType.HBStateExecutingLoginSucceeded;
+import com.io7m.idstore.model.IdAdmin;
+import com.io7m.idstore.model.IdAdminPermission;
+import com.io7m.idstore.model.IdEmail;
 import com.io7m.idstore_gui.admin.IdAGConfiguration;
 import com.io7m.idstore_gui.admin.internal.IdAGStringsType;
 import com.io7m.idstore_gui.admin.internal.client.IdAGClientService;
 import com.io7m.idstore_gui.admin.internal.users.IdAGUserEmailAddControllers;
-import com.io7m.idstore.model.IdAdmin;
-import com.io7m.idstore.model.IdAdminPermission;
-import com.io7m.idstore.model.IdEmail;
 import com.io7m.repetoir.core.RPServiceDirectoryType;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -128,9 +128,9 @@ public final class IdAGProfileController
   }
 
   private void onClientStatusChanged(
-    final HBStateType<?, ?, ?, ?> statusNew)
+    final HBStateType statusNew)
   {
-    if (statusNew instanceof HBStateExecutingLoginSucceeded) {
+    if (statusNew instanceof HBStateConnectionSucceeded) {
       this.client.adminSelf().thenAcceptAsync(this::onAdminReceived);
       return;
     }
