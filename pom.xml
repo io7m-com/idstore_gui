@@ -57,7 +57,7 @@
     <org.jline.version>3.23.0</org.jline.version>
     <org.junit.version>5.14.2</org.junit.version>
     <slf4j.version>2.0.17</slf4j.version>
-    <testcontainers.version>1.21.3</testcontainers.version>
+    <testcontainers.version>1.21.4</testcontainers.version>
   </properties>
 
   <licenses>
